@@ -1,0 +1,96 @@
+#include <Arduino.h>
+#include <BleKeyboard.h>
+#include <SPI.h>
+#include <TFT_eSPI.h>
+
+/*
+Import all the required library files for the individual apps.
+*/
+#include "config.h"
+#include "arduinoUI.h"
+
+// Setup the display
+uint16_t calData[5] = { 257, 3626, 256, 3499, 7 };
+TFT_eSPI tft = TFT_eSPI();
+
+// Name that will show up in your Windows Bluetooth settings
+BleKeyboard bleKeyboard("CYD Wireless Tool", "Freenove", 100);
+
+// CYD onboard BOOT button is connected to GPIO 0
+const int BUTTON_PIN = 0; 
+int lastButtonState = HIGH;
+
+// Correct 2.x Core Backlight PWM Setup
+void uiBacklight(uint8_t level) {
+  static bool inited = false;
+  if (!inited) {
+    ledcSetup(0, 5000, 8);      // PWM Channel 0, 5 kHz frequency, 8-bit resolution
+    ledcAttachPin(27, 0);       // Attach physical GPIO 27 to PWM Channel 0
+    inited = true;
+  }
+  ledcWrite(0, level);          // Send the dimming value to Channel 0
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("TFT init starting");
+
+  // Initialize display controller
+  tft.init();
+  tft.setRotation(1);
+
+  // Enable backlight pin if the screen uses GPIO 27 for the LED
+  pinMode(27, OUTPUT);
+  digitalWrite(27, HIGH);
+  uiBacklight(255);
+
+  // Direct red canvas verification
+  tft.fillScreen(TFT_RED);
+  tft.setTextColor(TFT_WHITE, TFT_RED);
+  tft.setTextSize(3);
+  tft.setCursor(40, 100);
+  tft.print("WORKS!");
+
+  // Start the BLE keyboard service
+  bleKeyboard.begin();
+
+  // Configure the built-in boot button with internal pull-up resistor
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+}
+
+void loop() {
+  // Read the current state of the button
+  int buttonState = digitalRead(BUTTON_PIN);
+
+  // Check if the board is paired and connected to Windows
+  if(bleKeyboard.isConnected()) {
+    
+    // Check if the button was pressed (LOW means pressed)
+    if (buttonState == LOW && lastButtonState == HIGH) {
+      delay(50); // Simple debounce delay to prevent double-triggering
+
+      // Select All
+      // bleKeyboard.press(KEY_LEFT_CTRL);
+      // bleKeyboard.press('a');
+
+      // Visual Studio PlatformIO build
+      // bleKeyboard.press(KEY_LEFT_CTRL);
+      // bleKeyboard.press(KEY_LEFT_ALT);
+      // bleKeyboard.press('b');
+
+      // Visual Studio Code build and upload
+      bleKeyboard.press(KEY_LEFT_CTRL);
+      bleKeyboard.press(KEY_LEFT_ALT);
+      bleKeyboard.press('u');
+
+      delay(100); // Small pause to let Windows register the combination
+      
+      // Release all keys immediately
+      bleKeyboard.releaseAll();
+    }
+  }
+  
+  // Save the current state for the next loop iteration
+  lastButtonState = buttonState;
+}
