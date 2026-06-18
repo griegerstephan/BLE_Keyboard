@@ -19,7 +19,7 @@ static void setDefaults() {
   buttons.push_back({ "VS",           "/VSC_Icon.bmp",            {  } });
   buttons.push_back({ "Arduino",        "/Arduino_Icon.bmp",            {  } });
 } 
-
+ 
 static void setVisualStudioButtons(){
   Serial.println("Loading Visual Studio desktop buttons");
   buttons.clear();
@@ -29,6 +29,16 @@ static void setVisualStudioButtons(){
   buttons.push_back({ "Build",          "/vsbuild.bmp",         { "ctrl+alt+b" } });
   buttons.push_back({ "BuildUpload",    "/vsbuildupload.bmp",   { "ctrl+alt+u" } });
   buttons.push_back({ "Serial",         "/vsserial.bmp",        { "ctrl+alt+s" } });
+}
+
+static void setArduinoButtons(){
+  Serial.println("Loading Arduino desktop buttons");
+  buttons.clear();
+  buttons.push_back({ "Copy",           "/copy.bmp",            { "ctrl+a", "ctrl+c" } });
+  buttons.push_back({ "SaveAll",        "/save.bmp",            { "ctrl+s" } });
+  buttons.push_back({ "Build",          "/vsbuild.bmp",         { "ctrl+r" } });
+  buttons.push_back({ "BuildUpload",    "/vsbuildupload.bmp",   { "ctrl+u" } });
+  buttons.push_back({ "Serial",         "/vsserial.bmp",        { "ctrl+shift+m" } });
 }
 
 void desktopDraw() {
@@ -52,7 +62,8 @@ void desktopHandleTouch(int x, int y) {
       setVisualStudioButtons();
       desktopDraw();
     } else if (buttons[pressedIndex].label == "Arduino") {
-      //switchTo(APP_ARDUINO);
+      setArduinoButtons();
+      desktopDraw();
     } else {
       bleRunAction(buttons[pressedIndex].steps);
     }

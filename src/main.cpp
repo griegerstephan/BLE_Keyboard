@@ -29,6 +29,12 @@ void setup(){
   uiFillBackground(TFT_RED); // Fill the background with red to show it's working
   tft.setRotation(1); // Set your display orientation
 
+  // --- ADDED TEXT DISPLAY CODE ---
+  tft.setTextColor(TFT_WHITE);                 // Set font colour to white
+  tft.setTextSize(2);                          // Set font size to 2
+  tft.drawString("Waiting for Bluetooth", 10, 10); // Print message at X:10, Y:10
+  // -------------------------------
+   
   // Initialize the touch controller and define its screen boundary limits
   touch.setResolution(SW, SH); 
   touch.setRotation(1); // Match your TFT rotation (1)
@@ -44,8 +50,14 @@ void setup(){
                        std::string(bleManuf.c_str()), 100);
   kb->begin();
 
+  // --- WAIT FOR PC TO CONNECT & DELAY 1 SECOND ---
+  while (!kb->isConnected()) {
+    delay(100); // Polling check to prevent the ESP32 watchdog timer from biting
+  }
+
   desktopDraw(); // Draw the desktop UI
 }
+
 
 void loop() {
   // Track whether the screen was pressed in the previous frame
