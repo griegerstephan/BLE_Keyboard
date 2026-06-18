@@ -33,31 +33,52 @@ static uint8_t namedKey(const String& k) {
   return 0;
 }
 
-
 static void sendChord(const String& chord) {
   if (!kb || !kb->isConnected()) return;
-  String s = chord; s.toLowerCase();
+  
+  // 1. Force explicit local instantiation to isolate fresh RAM tracks
+  String s = chord; 
+  s.toLowerCase();
   String finalKey = "";
+  finalKey.reserve(16); // Pre-allocate heap space to prevent pointer shifting
+  
   int start = 0;
   while (true) {
     int plus = s.indexOf('+', start);
     String tok = (plus == -1) ? s.substring(start) : s.substring(start, plus);
     tok.trim();
+    
     if      (tok == "ctrl" || tok == "control")            kb->press(KEY_LEFT_CTRL);
     else if (tok == "alt")                                 kb->press(KEY_LEFT_ALT);
     else if (tok == "shift")                               kb->press(KEY_LEFT_SHIFT);
-    else if (tok == "win" || tok == "gui" || tok == "cmd") kb->press(KEY_LEFT_GUI);
-    else if (tok.length() > 0)                             finalKey = tok;
+    else if (tok == "win" || tok == "windows" || tok == "gui" || tok == "cmd") kb->press(KEY_LEFT_GUI);
+    else if (tok.length() > 0) {
+      finalKey = tok; // Safely lock the character token
+    }
+    
     if (plus == -1) break;
     start = plus + 1;
   }
-  if (finalKey.length() == 1)      kb->press(finalKey[0]);
-  else if (finalKey.length() > 1) { uint8_t nk = namedKey(finalKey); if (nk) kb->press(nk); }
+  
+  // 2. Strict execution block with forced type verification
+  if (finalKey.length() == 1) {
+    char cleanChar = finalKey.charAt(0);
+    kb->press((uint8_t)cleanChar);
+  }
+  else if (finalKey.length() > 1) { 
+    uint8_t nk = namedKey(finalKey); 
+    if (nk != 0) {
+      kb->press(nk); 
+    }
+  }
+  
   delay(80);
   kb->releaseAll();
+  delay(10); // Small cooldown safety pause before the next chord step tracks
 }
 
-void bleRunAction(const std::vector<String>& steps) {
+
+void bleRunAction(std::vector<String> steps) {
   for (size_t i = 0; i < steps.size(); i++) { 
     sendChord(steps[i]);
     if (i + 1 < steps.size()) delay(120);

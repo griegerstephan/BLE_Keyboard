@@ -19,9 +19,9 @@ BleKeyboard* kb = nullptr;
 SPIClass sdSPI(VSPI);  // SD card lives on its own VSPI bus
 bool sdReady = false;  // did the SD card mount?
 
-String bleName  = "CYD Wireless Tool";
-String bleManuf = "Freenove";
-
+String bleName  = "Shortcut Keyboard";
+String bleManuf = "Griegs";
+ 
 void setup(){
   Serial.begin(115200);
   delay(300);
@@ -45,7 +45,6 @@ void setup(){
   // Bring up the SD card on its own VSPI bus
   sdSPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
   sdReady = SD.begin(SD_CS, sdSPI, 20000000);
-  Serial.println(sdReady ? "SD OK" : "SD init FAILED");
 
   // Set up BLE keyboard
   BLEDevice::init(std::string(bleName.c_str()));
@@ -63,7 +62,9 @@ void setup(){
   kb = new BleKeyboard(std::string(bleName.c_str()),
                        std::string(bleManuf.c_str()), 100);
   kb->begin();
-
+  kb->releaseAll();
+  
+  uiFillBackground(APP_BACKGROUND); // Fill the background with the app's background color
   desktopDraw(); // Draw the desktop UI
 }
 

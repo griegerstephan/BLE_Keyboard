@@ -10,6 +10,7 @@
 
 // Define project palettes
 #define APP_BACKGROUND      TFT_BLACK
+#define ARDUINO             0x036E
 
 // SD card pins (VSPI - separate bus from the TFT/touch on HSPI)
 #define SD_CS   5
@@ -37,8 +38,5 @@ struct Btn {
 
 // EXTERN tells other files this vector exists globally, without creating it yet
 extern std::vector<Btn> buttons;
-
-// Defined in the main .ino - lets any module request a screen change.
-void switchTo(AppId app);
 
 #endif

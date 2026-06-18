@@ -4,6 +4,6 @@
 #include <Arduino.h>
 #include <vector>    // <-- ADD THIS: Defines what a 'std::vector' is
 
-void bleRunAction(const std::vector<String>& steps);
+void bleRunAction(std::vector<String> steps);
 
-#endif 
+#endif  

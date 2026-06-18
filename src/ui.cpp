@@ -28,7 +28,6 @@ static uint32_t read32(File &f) {
 
 int uiDrawBMP(const char* filename, int x, int y) {
   File bmp = SD.open(filename);
-  if (!bmp) { Serial.printf("Cannot open %s\n", filename); return 0; }
 
   if (read16(bmp) != 0x4D42) { Serial.printf("%s: not a BMP\n", filename); bmp.close(); return 0; }
 
@@ -42,7 +41,6 @@ int uiDrawBMP(const char* filename, int x, int y) {
   uint32_t compression = read32(bmp);
 
   if (planes != 1 || depth != 24 || compression != 0) {
-    Serial.printf("%s: need 24-bit uncompressed BMP\n", filename);
     bmp.close();
     return 0;
   }
@@ -75,7 +73,7 @@ void uiDrawButtons(const std::vector<Btn>& buttons) {
   const int btnH = 96;
   
   const int startX = 8;   
-  const int startY = 16;  
+  const int startY = 3;  
   const int gapX = 8;    
   const int gapY = 16;   
   const int cols = 3;     
@@ -97,7 +95,7 @@ int uiGetPressedButtonIndex(int touchX, int touchY) {
   
   // These MUST exactly match the layout numbers used in your drawing loop
   const int startX = 8;   // Left margin
-  const int startY = 16;  // Top margin
+  const int startY = 3;  // Top margin
   const int gapX = 8;     // Space between columns
   const int gapY = 16;    // Space between rows
   const int cols = 3;     // 3 buttons per row

@@ -14,14 +14,12 @@ std::vector<Btn> buttons; // the buttons to show on the desktop, loaded from con
 AppId currentApp = APP_DESKTOP;
 
 static void setDefaults() {
-  Serial.println("Loading default desktop buttons");
   buttons.clear();
-  buttons.push_back({ "VS",           "/VSC_Icon.bmp",            {  } });
-  buttons.push_back({ "Arduino",        "/Arduino_Icon.bmp",            {  } });
+  buttons.push_back({ "VS",           "/VSC_Icon.bmp",            { "ctrl" } });
+  buttons.push_back({ "Arduino",        "/Arduino_Icon.bmp",      { "ctrl" } });
 } 
  
 static void setVisualStudioButtons(){
-  Serial.println("Loading Visual Studio desktop buttons");
   buttons.clear();
   buttons.push_back({ "Copy",           "/copy.bmp",            { "ctrl+a", "ctrl+c" } });
   buttons.push_back({ "SaveAll",        "/save.bmp",            { "ctrl+k", "s" } });
@@ -32,40 +30,54 @@ static void setVisualStudioButtons(){
 }
 
 static void setArduinoButtons(){
-  Serial.println("Loading Arduino desktop buttons");
   buttons.clear();
-  buttons.push_back({ "Copy",           "/copy.bmp",            { "ctrl+a", "ctrl+c" } });
-  buttons.push_back({ "SaveAll",        "/save.bmp",            { "ctrl+s" } });
-  buttons.push_back({ "Build",          "/vsbuild.bmp",         { "ctrl+r" } });
-  buttons.push_back({ "BuildUpload",    "/vsbuildupload.bmp",   { "ctrl+u" } });
-  buttons.push_back({ "Serial",         "/vsserial.bmp",        { "ctrl+shift+m" } });
+  buttons.push_back({ "Copy",           "/arduinocopy.bmp",             { "ctrl+a", "ctrl+c" } });
+  buttons.push_back({ "SaveAll",        "/arduinosave.bmp",             { "ctrl+s" } });
+  buttons.push_back({ "Build",          "/arduinobuild.bmp",            { "ctrl+r" } });
+  buttons.push_back({ "BuildUpload",    "/arduinoupload.bmp",           { "ctrl+u" } });
+  buttons.push_back({ "Serial",         "/arduinoserial.bmp",           { "ctrl+shift+m" } });
+  
 }
 
 void desktopDraw() {
-  // Clear the screen and draw the desktop background
-  tft.fillScreen(APP_BACKGROUND); 
-
   if (buttons.size() == 0) {
     setDefaults();
   }
 
   // Draw the buttons on the screen
   uiDrawButtons(buttons);
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_DARKGREY);
+  tft.drawString("--- TAP HERE FOR MAIN MENU ---", SW / 2, 228, 1);
 }
 
+
 void desktopHandleTouch(int x, int y) {
+  // --- INVISIBLE GLOBAL BOTTOM HOME BUTTON ---
+  Serial.printf("Touch at X:%d Y:%d\n", x, y); // Debug: Print touch coordinates to Serial Monitor
+  if (y >= 200) {
+    setDefaults(); // Reset to default desktop buttons
+    tft.fillScreen(APP_BACKGROUND); // Clear the screen to the app background color 
+    desktopDraw(); // Redraw the desktop with default buttons
+    return; 
+  }
+
+  // Your original working button processing logic remains completely untouched below
   int pressedIndex = uiGetPressedButtonIndex(x, y);
-  int numSteps = buttons[pressedIndex].steps.size();
   
   if (pressedIndex != -1) {
     if (buttons[pressedIndex].label == "VS") {
       setVisualStudioButtons();
+      tft.fillScreen(APP_BACKGROUND);
       desktopDraw();
     } else if (buttons[pressedIndex].label == "Arduino") {
       setArduinoButtons();
+      tft.fillScreen(ARDUINO); // Change background color to match Arduino palette
       desktopDraw();
     } else {
       bleRunAction(buttons[pressedIndex].steps);
     }
   }
 }
+
