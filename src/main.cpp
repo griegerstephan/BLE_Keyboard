@@ -1,5 +1,7 @@
 #include <TFT_eSPI.h>
 #include <TFT_Touch.h>
+#include <BLEDevice.h>
+#include <BLESecurity.h>
 #include <BleKeyboard.h>
 #include "SPI.h"
 #include "SD.h"
@@ -46,14 +48,21 @@ void setup(){
   Serial.println(sdReady ? "SD OK" : "SD init FAILED");
 
   // Set up BLE keyboard
+  BLEDevice::init(std::string(bleName.c_str()));
+  BLESecurity *pSecurity = new BLESecurity();
+  pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND); // Enable secure bonding tracker
+  pSecurity->setCapability(ESP_IO_CAP_OUT);                 // Forces the client PC to ask for a PIN
+  
+  // 3. Set your custom 6-digit PIN code
+  uint32_t passkey = 260368; // <-- UPDATED PASSKEY HERE
+  uint32_t* passkey_ptr = &passkey;
+  esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, passkey_ptr, sizeof(uint32_t));
+  // --------------------------------------
+
+  // Set up BLE keyboard (Uses the BLE initialization we just secured)
   kb = new BleKeyboard(std::string(bleName.c_str()),
                        std::string(bleManuf.c_str()), 100);
   kb->begin();
-
-  // --- WAIT FOR PC TO CONNECT & DELAY 1 SECOND ---
-  while (!kb->isConnected()) {
-    delay(100); // Polling check to prevent the ESP32 watchdog timer from biting
-  }
 
   desktopDraw(); // Draw the desktop UI
 }
