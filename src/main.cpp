@@ -11,6 +11,11 @@
 #include "ui.h"             // UI drawing functions and utilities
 #include "desktop.h"        // desktop app code 
 
+// Prototypes to link files together cleanly
+extern void checkForIncomingWindowsProfile();
+extern void desktopHandleTouch(int x, int y);
+extern void desktopDraw();
+
 TFT_eSPI tft = TFT_eSPI();
 TFT_Touch touch = TFT_Touch(T_DCS, T_DCLK, T_DIN, T_DOUT);
 BleKeyboard* kb = nullptr;
@@ -52,11 +57,10 @@ void setup(){
   pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND); // Enable secure bonding tracker
   pSecurity->setCapability(ESP_IO_CAP_OUT);                 // Forces the client PC to ask for a PIN
   
-  // 3. Set your custom 6-digit PIN code
-  uint32_t passkey = 260368; // <-- UPDATED PASSKEY HERE
+  // Custom 6-digit PIN code
+  uint32_t passkey = 260368; 
   uint32_t* passkey_ptr = &passkey;
   esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, passkey_ptr, sizeof(uint32_t));
-  // --------------------------------------
 
   // Set up BLE keyboard (Uses the BLE initialization we just secured)
   kb = new BleKeyboard(std::string(bleName.c_str()),
@@ -67,7 +71,6 @@ void setup(){
   uiFillBackground(APP_BACKGROUND); // Fill the background with the app's background color
   desktopDraw(); // Draw the desktop UI
 }
-
 
 void loop() {
   checkForIncomingWindowsProfile(); 
@@ -96,5 +99,3 @@ void loop() {
     }
   }
 }
-
-
