@@ -89,4 +89,25 @@ void desktopHandleTouch(int x, int y) {
     }
   } 
 }
-  
+
+void checkForIncomingWindowsProfile() {
+  // Check if Windows dropped any characters down the USB pipeline
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n'); 
+    input.trim(); // Wipe out carriage returns \r or stray whitespace
+
+    // Capture our unique protocol token string
+    if (input.startsWith("PROFILE:")) {
+      String targetProfile = input.substring(8); 
+      targetProfile.trim();
+
+      if (targetProfile != "") {
+        
+        loadProfile(targetProfile);
+        tft.fillScreen(APP_BACKGROUND); 
+        desktopDraw(); 
+      }
+    }
+  }
+}
+

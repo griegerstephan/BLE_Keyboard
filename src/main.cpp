@@ -70,6 +70,8 @@ void setup(){
 
 
 void loop() {
+  checkForIncomingWindowsProfile(); 
+  
   // Track whether the screen was pressed in the previous frame
   static bool wasPressedLastFrame = false;
 
