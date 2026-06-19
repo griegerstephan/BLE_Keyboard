@@ -1,0 +1,26 @@
+{
+  "Defaults": [
+    { "label": "VS", "image": "/VSC_Icon.bmp", "target": "VisualStudio" },
+    { "label": "Arduino", "image": "/Arduino_Icon.bmp", "target": "Arduino" },
+    { "label": "YouTube", "image": "/youtube.bmp", "target": "YouTube" }
+  ],
+  "VisualStudio": [
+    { "label": "Copy", "image": "/copy.bmp", "steps": ["ctrl+a", "ctrl+c"] },
+    { "label": "SaveAll", "image": "/save.bmp", "steps": ["ctrl+k", "s"] },
+    { "label": "AI", "image": "/vsai.bmp", "steps": ["ctrl+alt+i"] },
+    { "label": "Build", "image": "/vsbuild.bmp", "steps": ["ctrl+alt+b"] },
+    { "label": "BuildUpload", "image": "/vsbuildupload.bmp", "steps": ["ctrl+alt+u"] },
+    { "label": "Serial", "image": "/vsserial.bmp", "steps": ["ctrl+alt+s" ] }
+  ],
+  "Arduino": [
+    { "label": "Copy", "image": "/arduinocopy.bmp", "steps": ["ctrl+a", "ctrl+c"] },
+    { "label": "SaveAll", "image": "/arduinosave.bmp", "steps": ["ctrl+s"] },
+    { "label": "Build", "image": "/arduinobuild.bmp", "steps": ["ctrl+r"] },
+    { "label": "BuildUpload", "image": "/arduinoupload.bmp", "steps": ["ctrl+u"] },
+    { "label": "Serial", "image": "/arduinoserial.bmp", "steps": ["ctrl+shift+m"] }
+  ],
+  "YouTube": [
+    { "label": "SkipAd", "image": "/skipad.bmp", "steps": ["right", "right","right","right","right","right"] },
+    { "label": "CloseTab", "image": "/closetab.bmp", "steps": ["ctrl+f4"] }
+  ]
+}

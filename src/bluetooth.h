@@ -2,7 +2,7 @@
 #define BLE_H
 
 #include <Arduino.h>
-#include <vector>    // <-- ADD THIS: Defines what a 'std::vector' is
+#include <vector> 
 
 void bleRunAction(std::vector<String> steps);
 

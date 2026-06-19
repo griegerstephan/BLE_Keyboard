@@ -115,7 +115,7 @@ int uiGetPressedButtonIndex(int touchX, int touchY) {
 
     // Check if the touch coordinates fall entirely inside this bounding box
     if (touchX >= x1 && touchX <= x2 && touchY >= y1 && touchY <= y2) {
-      return i; // Found it! Return the index (0, 1, 2...)
+      return i; 
     }
   }
 

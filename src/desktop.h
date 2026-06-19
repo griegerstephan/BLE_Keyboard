@@ -1,6 +1,4 @@
-/*
- * desktop.h - the GEOS-style home screen with app icons.
- */
+
 #ifndef DESKTOP_H
 #define DESKTOP_H
 

@@ -10,7 +10,6 @@
 
 // Define project palettes
 #define APP_BACKGROUND      TFT_BLACK
-#define ARDUINO             0x036E
 
 // SD card pins (VSPI - separate bus from the TFT/touch on HSPI)
 #define SD_CS   5
@@ -22,18 +21,12 @@
 #define T_DCS  33  // Chip Select (TOUCH_CS)
 #define T_DCLK 25  // Clock pin
 
-// Every screen/app has an ID. Add new apps here as you build them.
-enum AppId {
-  APP_DESKTOP,
-  APP_ARDUINO,
-  APP_VISUALSTUDIO
-};
- 
 // Define the button structure so every file knows what a 'Btn' is
 struct Btn {
   String label;
   String image;              // 48x48 BMP path on the SD card
   std::vector<String> steps; // each entry is one chord, e.g. "ctrl+a"
+  String target; // NEW: Holds the profile name to load next (e.g., "VisualStudio")
 };
 
 // EXTERN tells other files this vector exists globally, without creating it yet

@@ -5,7 +5,6 @@
 
 extern BleKeyboard* kb;
 
-
 // -------------------------------------------------------
 // Hotkey parsing & sending
 // -------------------------------------------------------
@@ -28,11 +27,15 @@ static uint8_t namedKey(const String& k) {
 
   if (k.length() >= 2 && k[0] == 'f') {
     int n = k.substring(1).toInt();
-    if (n >= 1 && n <= 12) return KEY_F1 + (n - 1);
+
+    if (n >= 1 && n <= 12) {
+      return KEY_F1 + (n - 1);
+    }
   }
   return 0;
 }
 
+// Sends the given chord string (e.g. "ctrl+alt+del") as a single keypress event, then releases all keys after a short delay.
 static void sendChord(const String& chord) {
   if (!kb || !kb->isConnected()) return;
   
@@ -77,7 +80,7 @@ static void sendChord(const String& chord) {
   delay(10); // Small cooldown safety pause before the next chord step tracks
 }
 
-
+// Executes a sequence of chord steps with a short delay between each step (e.g. for "ctrl+alt+del, win+r, notepad+enter")
 void bleRunAction(std::vector<String> steps) {
   for (size_t i = 0; i < steps.size(); i++) { 
     sendChord(steps[i]);

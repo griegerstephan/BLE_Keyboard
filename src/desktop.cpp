@@ -1,50 +1,60 @@
 #include <TFT_eSPI.h>
 #include <TFT_Touch.h>
-#include "SPI.h"
+#include <FS.h>
+#include <SD.h>
+#include <ArduinoJson.h>
+
 #include "config.h"
 #include "ui.h"
 #include "bluetooth.h"
 
-// Use the tft object to draw to the screen
+#define SD_CS_PIN 5 
+
 extern TFT_eSPI tft;
+static bool firstBootCompleted = false;
+std::vector<Btn> buttons;
 
-std::vector<Btn> buttons; // the buttons to show on the desktop, loaded from config.json
+void loadProfile(const String& profileName) { 
+    buttons.clear();
 
-// Set the startup app to show
-AppId currentApp = APP_DESKTOP;
+    File configFile = SD.open("/config.json", FILE_READ); 
+    if (!configFile) {
+      Serial.println("Error: Could not open config.json from SD");
+      return;
+    }
 
-static void setDefaults() {
-  buttons.clear();
-  buttons.push_back({ "VS",           "/VSC_Icon.bmp",            { "ctrl" } });
-  buttons.push_back({ "Arduino",        "/Arduino_Icon.bmp",      { "ctrl" } });
-} 
- 
-static void setVisualStudioButtons(){
-  buttons.clear();
-  buttons.push_back({ "Copy",           "/copy.bmp",            { "ctrl+a", "ctrl+c" } });
-  buttons.push_back({ "SaveAll",        "/save.bmp",            { "ctrl+k", "s" } });
-  buttons.push_back({ "AI",             "/vsai.bmp",            { "ctrl+alt+i" } });
-  buttons.push_back({ "Build",          "/vsbuild.bmp",         { "ctrl+alt+b" } });
-  buttons.push_back({ "BuildUpload",    "/vsbuildupload.bmp",   { "ctrl+alt+u" } });
-  buttons.push_back({ "Serial",         "/vsserial.bmp",        { "ctrl+alt+s" } });
-}
+    JsonDocument doc; 
+    DeserializationError error = deserializeJson(doc, configFile);
+    configFile.close();
+    if (error){ 
+      Serial.println("Error: JSON parsing failed");
+      return;
+    }
 
-static void setArduinoButtons(){
-  buttons.clear();
-  buttons.push_back({ "Copy",           "/arduinocopy.bmp",             { "ctrl+a", "ctrl+c" } });
-  buttons.push_back({ "SaveAll",        "/arduinosave.bmp",             { "ctrl+s" } });
-  buttons.push_back({ "Build",          "/arduinobuild.bmp",            { "ctrl+r" } });
-  buttons.push_back({ "BuildUpload",    "/arduinoupload.bmp",           { "ctrl+u" } });
-  buttons.push_back({ "Serial",         "/arduinoserial.bmp",           { "ctrl+shift+m" } });
-  
+    JsonArray profileButtons = doc[profileName];
+
+    for (JsonObject btn : profileButtons) {
+        Btn newButton;
+        newButton.label = btn["label"].as<String>(); 
+        newButton.image = btn["image"].as<String>();
+        newButton.target = btn["target"].as<String>(); 
+
+        JsonArray shortcutsArr = btn["steps"];
+        for (JsonVariant v : shortcutsArr) {
+            newButton.steps.push_back(v.as<String>());
+        }
+
+        buttons.push_back(newButton);
+    }
 }
 
 void desktopDraw() {
-  if (buttons.size() == 0) {
-    setDefaults();
+  if (!firstBootCompleted && buttons.size() == 0) {
+    loadProfile("Defaults");
+    firstBootCompleted = true; 
   }
 
-  // Draw the buttons on the screen
+  tft.fillScreen(APP_BACKGROUND); 
   uiDrawButtons(buttons);
 
   tft.setTextSize(1);
@@ -52,32 +62,31 @@ void desktopDraw() {
   tft.drawString("--- TAP HERE FOR MAIN MENU ---", SW / 2, 228, 1);
 }
 
-
 void desktopHandleTouch(int x, int y) {
   // --- INVISIBLE GLOBAL BOTTOM HOME BUTTON ---
-  Serial.printf("Touch at X:%d Y:%d\n", x, y); // Debug: Print touch coordinates to Serial Monitor
+  Serial.printf("Touch at X:%d Y:%d\n", x, y); 
   if (y >= 200) {
-    setDefaults(); // Reset to default desktop buttons
-    tft.fillScreen(APP_BACKGROUND); // Clear the screen to the app background color 
-    desktopDraw(); // Redraw the desktop with default buttons
+    loadProfile("Defaults");
+    desktopDraw(); 
     return; 
   }
 
-  // Your original working button processing logic remains completely untouched below
   int pressedIndex = uiGetPressedButtonIndex(x, y);
   
   if (pressedIndex != -1) {
-    if (buttons[pressedIndex].label == "VS") {
-      setVisualStudioButtons();
-      tft.fillScreen(APP_BACKGROUND);
+    const auto clickedButton = buttons[pressedIndex];
+    
+    Serial.println("Button pressed target profile: " + clickedButton.target); 
+    
+     if (clickedButton.target != "" && clickedButton.target != "null") {
+      
+      loadProfile(clickedButton.target);
+      
       desktopDraw();
-    } else if (buttons[pressedIndex].label == "Arduino") {
-      setArduinoButtons();
-      tft.fillScreen(ARDUINO); // Change background color to match Arduino palette
-      desktopDraw();
+      
     } else {
-      bleRunAction(buttons[pressedIndex].steps);
+      bleRunAction(clickedButton.steps);
     }
-  }
+  } 
 }
-
+  
