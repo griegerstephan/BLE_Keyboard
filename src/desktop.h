@@ -7,5 +7,5 @@
 void desktopDraw();
 void desktopHandleTouch(int x, int y);
 void checkForIncomingWindowsProfile();
-
+ 
 #endif

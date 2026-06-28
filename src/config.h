@@ -14,7 +14,7 @@
 // SD card pins (VSPI - separate bus from the TFT/touch on HSPI)
 #define SD_CS   5
 #define SD_SCK  18
-#define SD_MISO 19
+#define SD_MISO 19 
 #define SD_MOSI 23
 #define T_DOUT 39  // MISO / Data out
 #define T_DIN  32  // MOSI / Data in
