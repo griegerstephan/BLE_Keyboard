@@ -21,6 +21,18 @@
   ],
   "YouTube": [
     { "label": "SkipAd", "image": "/skipad.bmp", "steps": ["right", "right","right","right","right","right"] },
-    { "label": "CloseTab", "image": "/closetab.bmp", "steps": ["ctrl+f4"] }
+    { "label": "CloseTab", "image": "/closetab.bmp", "steps": ["ctrl+f4"] },
+    { "label": "YouTube", "image": "/youtube.bmp", "steps": ["ctrl+t","y","o","u","t","u","b","e",".","c","o","m", "enter"] }
+  ],
+  "powerpnt.exe": [
+    { "label": "NewSlide", "image": "/powerpntNewSlide.bmp", "steps": ["ctrl+m"] },
+    { "label": "EditMaster", "image": "/powerpntMaster.bmp", "steps": ["alt+w","m"] }
+  ],
+  "claude.exe": [
+    { "label": "chat", "image": "/claudechat.bmp", "steps": ["ctrl+1"] },
+    { "label": "NewChat", "image": "/claudenewchat.bmp", "steps": ["ctrl+n"] },
+    { "label": "code", "image": "/claudecode.bmp", "steps": ["ctrl+2"] },
+    { "label": "settings", "image": "/claudesettings.bmp", "steps": ["ctrl+,"] }
+
   ]
 }

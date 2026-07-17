@@ -7,7 +7,7 @@
 // Screen dimensions (landscape, rotation 1)
 #define SW 320
 #define SH 240
-
+ 
 // Define project palettes
 #define APP_BACKGROUND      TFT_BLACK
 

@@ -41,7 +41,7 @@ void setup(){
   tft.setTextSize(2);                          // Set font size to 2
   tft.drawString("Waiting for Bluetooth", 10, 10); // Print message at X:10, Y:10
   // -------------------------------
-   
+  
   // Initialize the touch controller and define its screen boundary limits
   touch.setResolution(SW, SH); 
   touch.setRotation(1); // Match your TFT rotation (1)

@@ -123,6 +123,8 @@ CheckActiveWindow() {
     }
     else if (ActiveProcess == "brave.exe") {  
         TargetProfile := "YouTube"
+    } else {
+        TargetProfile := StrLower(ActiveProcess)
     }
 
     ; Only send if it matches an accepted app, the app changed, AND we're connected
