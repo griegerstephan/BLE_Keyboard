@@ -33,7 +33,7 @@ void setup(){
   // Set up the screen and touch controller
   tft.init();
   uiFillBackground(TFT_RED); // Fill the background with red to show it's working
-  tft.setRotation(1); // Set your display orientation
+  uiLoadRotation(); // Normal or flipped landscape, as last set by the FLIP button
 
   // --- ADDED TEXT DISPLAY CODE ---
   tft.setTextColor(TFT_WHITE);                 // Set font colour to white
@@ -97,6 +97,7 @@ void loop() {
     if (!wasPressedLastFrame) {
       int x = touch.X();
       int y = touch.Y();
+      uiMapTouch(x, y); // Follow the screen if it has been flipped
 
       // Fire the handler exactly once
       desktopHandleTouch(x, y);

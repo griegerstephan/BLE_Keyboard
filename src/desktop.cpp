@@ -76,6 +76,14 @@ void desktopDraw() {
 void desktopHandleTouch(int x, int y) {
   // --- LCARS HOME BUTTON (bottom of the sidebar) ---
   Serial.printf("Touch at X:%d Y:%d\n", x, y);
+
+  // --- LCARS FLIP BUTTON (turns the screen upside down) ---
+  if (uiIsFlipPressed(x, y)) {
+    uiToggleRotation();
+    desktopDraw();
+    return;
+  }
+
   if (uiIsHomePressed(x, y)) {
     loadProfile("Defaults");
     desktopDraw(); 

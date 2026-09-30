@@ -1,10 +1,14 @@
 #include <TFT_eSPI.h>
 #include <TFT_Touch.h>
 #include "SPI.h"
+#include <Preferences.h>
 #include "config.h"
 #include "ui.h"
 
 extern TFT_eSPI tft;
+
+// Screen orientation: rotation 1 (normal landscape) or 3 (landscape, upside down)
+static bool screenFlipped = false;
 
 // --- LCARS frame geometry (320x240, rotation 1) ---
 const int SIDEBAR_W    = 58;   // width of the left sidebar
@@ -15,6 +19,8 @@ const int OUTER_R_BOT  = 16;   // outer radius of the bottom elbow
 const int INNER_R      = 13;   // inner (concave) radius of both elbows
 
 // Sidebar blocks
+const int FLIP_Y = 98;
+const int FLIP_H = 50;
 const int HOME_Y = 151;
 const int HOME_H = 44;
 
@@ -42,6 +48,33 @@ static const int PALETTE_SIZE = sizeof(BUTTON_PALETTE) / sizeof(BUTTON_PALETTE[0
 
 void uiFillBackground(uint16_t backgroundColor) {
   tft.fillScreen(backgroundColor);
+}
+
+// Restores the orientation saved by the FLIP button
+void uiLoadRotation() {
+  Preferences prefs;
+  prefs.begin("ui", true);
+  screenFlipped = prefs.getBool("flipped", false);
+  prefs.end();
+  tft.setRotation(screenFlipped ? 3 : 1);
+}
+
+void uiToggleRotation() {
+  screenFlipped = !screenFlipped;
+  tft.setRotation(screenFlipped ? 3 : 1);
+
+  Preferences prefs;
+  prefs.begin("ui", false);
+  prefs.putBool("flipped", screenFlipped);
+  prefs.end();
+}
+
+// Converts raw touch coordinates (always in rotation 1) to screen coordinates
+void uiMapTouch(int& x, int& y) {
+  if (screenFlipped) {
+    x = SW - 1 - x;
+    y = SH - 1 - y;
+  }
 }
 
 // Turns "BuildUpload" into "BUILD UPLOAD" and "claude.exe" into "CLAUDE"
@@ -107,7 +140,7 @@ static void drawBlockLabel(const char* text, int rightX, int bottomY) {
   tft.drawString(text, rightX, bottomY);
 }
 
-static void drawFrame(const String& title, size_t buttonCount) {
+static void drawFrame(const String& title) {
   // Smooth circles are drawn first and then covered by rectangles, so only the
   // outward-facing quarter of each anti-aliased edge stays visible.
 
@@ -136,16 +169,14 @@ static void drawFrame(const String& title, size_t buttonCount) {
   tft.fillRect(298, 0, 13, TOPBAR_H, LCARS_ORANGE);
 
   // --- Sidebar blocks ---
-  char count[12];
-  snprintf(count, sizeof(count), "%02u BTN", (unsigned)buttonCount);
   drawBlockLabel("PRF", SIDEBAR_W - 5, 55);
   uiDrawBleStatus(bleConnected);
-  tft.fillRect(0, 98, SIDEBAR_W, 50, LCARS_BLUE);
-  drawBlockLabel(count, SIDEBAR_W - 5, 144);
+  tft.fillRect(0, FLIP_Y, SIDEBAR_W, FLIP_H, LCARS_BLUE);
   tft.fillRect(0, HOME_Y, SIDEBAR_W, HOME_H, LCARS_RED);
   tft.setFreeFont(&FreeSansBold9pt7b);
   tft.setTextColor(TFT_BLACK);
   tft.setTextDatum(BR_DATUM);
+  tft.drawString("FLIP", SIDEBAR_W - 5, FLIP_Y + FLIP_H - 4);
   tft.drawString("HOME", SIDEBAR_W - 5, HOME_Y + HOME_H - 4);
 
   // --- Bottom elbow ---
@@ -191,7 +222,7 @@ static void drawButton(const Btn& btn, size_t i, size_t count) {
 
 void uiDrawScreen(const String& title, const std::vector<Btn>& buttons) {
   tft.fillScreen(APP_BACKGROUND);
-  drawFrame(title, buttons.size());
+  drawFrame(title);
 
   size_t count = visibleButtonCount(buttons.size());
   if (count < buttons.size()) {
@@ -204,6 +235,10 @@ void uiDrawScreen(const String& title, const std::vector<Btn>& buttons) {
 
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(nullptr);
+}
+
+bool uiIsFlipPressed(int touchX, int touchY) {
+  return touchX <= SIDEBAR_W + 6 && touchY >= FLIP_Y && touchY < HOME_Y;
 }
 
 bool uiIsHomePressed(int touchX, int touchY) {
