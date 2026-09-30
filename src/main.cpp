@@ -1,7 +1,6 @@
 #include <TFT_eSPI.h>
 #include <TFT_Touch.h>
-#include <BLEDevice.h>
-#include <BLESecurity.h>
+#include <NimBLEDevice.h>
 #include <BleKeyboard.h>
 #include "SPI.h"
 #include "SD.h"
@@ -51,16 +50,22 @@ void setup(){
   sdSPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
   sdReady = SD.begin(SD_CS, sdSPI, 20000000);
 
+  // Give the board its own Bluetooth address so Windows sees it as a new device,
+  // separate from any older pairing it cached for this board's factory address.
+  // Change BLE_ADDRESS_ID in config.h to force a fresh identity again.
+  uint8_t mac[6];
+  esp_efuse_mac_get_default(mac);
+  mac[0] = 0x02;                 // locally administered, unicast
+  mac[5] ^= BLE_ADDRESS_ID;
+  esp_base_mac_addr_set(mac);
+
   // Set up BLE keyboard
-  BLEDevice::init(std::string(bleName.c_str()));
-  BLESecurity *pSecurity = new BLESecurity();
-  pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND); // Enable secure bonding tracker
-  pSecurity->setCapability(ESP_IO_CAP_OUT);                 // Forces the client PC to ask for a PIN
-  
+  NimBLEDevice::init(std::string(bleName.c_str()));
+  NimBLEDevice::setSecurityAuth(true, true, true);            // bonding, MITM protection, secure connections
+  NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);     // Forces the client PC to ask for a PIN
+
   // Custom 6-digit PIN code
-  uint32_t passkey = 260368; 
-  uint32_t* passkey_ptr = &passkey;
-  esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, passkey_ptr, sizeof(uint32_t));
+  NimBLEDevice::setSecurityPasskey(260368);
 
   // Set up BLE keyboard (Uses the BLE initialization we just secured)
   kb = new BleKeyboard(std::string(bleName.c_str()),
@@ -73,8 +78,17 @@ void setup(){
 }
 
 void loop() {
-  checkForIncomingWindowsProfile(); 
-  
+  checkForIncomingWindowsProfile();
+
+  // Update the sidebar whenever the Bluetooth connection comes or goes
+  static bool lastBleConnected = false;
+  bool bleConnected = kb->isConnected();
+  if (bleConnected != lastBleConnected) {
+    Serial.println(bleConnected ? "BLE connected" : "BLE disconnected");
+    uiDrawBleStatus(bleConnected);
+    lastBleConnected = bleConnected;
+  }
+
   // Track whether the screen was pressed in the previous frame
   static bool wasPressedLastFrame = false;
 

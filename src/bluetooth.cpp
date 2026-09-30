@@ -82,7 +82,13 @@ static void sendChord(const String& chord) {
 
 // Executes a sequence of chord steps with a short delay between each step (e.g. for "ctrl+alt+del, win+r, notepad+enter")
 void bleRunAction(std::vector<String> steps) {
-  for (size_t i = 0; i < steps.size(); i++) { 
+  if (!kb || !kb->isConnected()) {
+    Serial.println("BLE not connected - shortcut not sent");
+    return;
+  }
+
+  for (size_t i = 0; i < steps.size(); i++) {
+    Serial.println("Sending: " + steps[i]);
     sendChord(steps[i]);
     if (i + 1 < steps.size()) delay(120);
   }

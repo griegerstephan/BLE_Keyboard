@@ -1,121 +1,223 @@
 #include <TFT_eSPI.h>
 #include <TFT_Touch.h>
 #include "SPI.h"
-#include "SD.h"
 #include "config.h"
+#include "ui.h"
 
 extern TFT_eSPI tft;
 
+// --- LCARS frame geometry (320x240, rotation 1) ---
+const int SIDEBAR_W    = 58;   // width of the left sidebar
+const int TOPBAR_H     = 16;   // height of the top bar
+const int BOTBAR_Y     = 224;  // top edge of the bottom bar
+const int OUTER_R_TOP  = 24;   // outer radius of the top elbow
+const int OUTER_R_BOT  = 16;   // outer radius of the bottom elbow
+const int INNER_R      = 13;   // inner (concave) radius of both elbows
+
+// Sidebar blocks
+const int HOME_Y = 151;
+const int HOME_H = 44;
+
+// --- Button area geometry ---
+// <= 3 buttons: one column of wide pills. Otherwise: two columns of smaller pills.
+const int AREA_X      = 68;
+const int WIDE_Y      = 30;
+const int WIDE_W      = 240;
+const int WIDE_H      = 48;
+const int WIDE_STEP_Y = 62;
+const int GRID_Y      = 28;
+const int GRID_W      = 118;
+const int GRID_H      = 38;
+const int GRID_STEP_X = 126;
+const int GRID_STEP_Y = 48;
+const int GRID_COLS   = 2;
+const int GRID_MAX    = 8;     // 4 rows x 2 columns fit between the bars
+
+// Colours cycled through for buttons that don't set their own
+static const uint16_t BUTTON_PALETTE[] = {
+  LCARS_ORANGE, LCARS_LAVENDER, LCARS_BLUE, LCARS_PEACH,
+  LCARS_RED, LCARS_TAN, LCARS_SKY, LCARS_APRICOT
+};
+static const int PALETTE_SIZE = sizeof(BUTTON_PALETTE) / sizeof(BUTTON_PALETTE[0]);
+
 void uiFillBackground(uint16_t backgroundColor) {
   tft.fillScreen(backgroundColor);
-}   
-
-static uint16_t read16(File &f) {
-  uint16_t r;
-  ((uint8_t *)&r)[0] = f.read();
-  ((uint8_t *)&r)[1] = f.read();
-  return r;
 }
 
-static uint32_t read32(File &f) {
-  uint32_t r;
-  ((uint8_t *)&r)[0] = f.read();
-  ((uint8_t *)&r)[1] = f.read();
-  ((uint8_t *)&r)[2] = f.read();
-  ((uint8_t *)&r)[3] = f.read();
-  return r;
+// Turns "BuildUpload" into "BUILD UPLOAD" and "claude.exe" into "CLAUDE"
+String uiPrettyName(const String& name) {
+  String src = name;
+  if (src.endsWith(".exe")) src = src.substring(0, src.length() - 4);
+
+  String out;
+  for (size_t i = 0; i < src.length(); i++) {
+    char c = src[i];
+    if (i > 0 && isupper(c) && islower(src[i - 1])) out += ' ';
+    out += (char)toupper(c);
+  }
+  return out;
 }
 
-int uiDrawBMP(const char* filename, int x, int y) {
-  File bmp = SD.open(filename);
+static bool bleConnected = false;
 
-  if (read16(bmp) != 0x4D42) { Serial.printf("%s: not a BMP\n", filename); bmp.close(); return 0; }
-
-  read32(bmp); read32(bmp);
-  uint32_t offset = read32(bmp);
-  read32(bmp);
-  int32_t  w = read32(bmp);
-  int32_t  h = read32(bmp);
-  uint16_t planes = read16(bmp);
-  uint16_t depth  = read16(bmp);
-  uint32_t compression = read32(bmp);
-
-  if (planes != 1 || depth != 24 || compression != 0) {
-    bmp.close();
-    return 0;
-  }
-
-  uint32_t rowSize = (w * 3 + 3) & ~3;
-  static uint16_t lineBuf[480];
-  uint8_t rawBuf[480 * 3];
-
-  tft.setSwapBytes(true);   // correct byte order (avoids green tint)
-  bmp.seek(offset);
-  tft.startWrite();
-  for (int i = 0; i < h; i++) {
-    bmp.read(rawBuf, rowSize);
-    int screenY = y + (h - 1 - i);   // BMP is stored bottom-up
-    for (int col = 0; col < w; col++) {
-      uint8_t b = rawBuf[col * 3];
-      uint8_t g = rawBuf[col * 3 + 1];
-      uint8_t r = rawBuf[col * 3 + 2];
-      lineBuf[col] = tft.color565(r, g, b);
-    }
-    tft.pushImage(x, screenY, w, 1, lineBuf);
-  }
-  tft.endWrite();
-  bmp.close();
-  return h;
+// Lavender sidebar block showing whether the PC is connected over Bluetooth
+void uiDrawBleStatus(bool connected) {
+  bleConnected = connected;
+  tft.fillRect(0, 61, SIDEBAR_W, 34, connected ? LCARS_LAVENDER : LCARS_RED);
+  tft.setFreeFont(nullptr);
+  tft.setTextFont(1);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextDatum(BR_DATUM);
+  tft.drawString(connected ? "BLE LINK" : "NO LINK", SIDEBAR_W - 5, 92);
+  tft.setTextDatum(TL_DATUM);
 }
 
-void uiDrawButtons(const std::vector<Btn>& buttons) {
-  const int btnW = 96;
-  const int btnH = 96;
-  
-  const int startX = 8;   
-  const int startY = 3;  
-  const int gapX = 8;    
-  const int gapY = 16;   
-  const int cols = 3;     
+static bool useWideLayout(size_t count) {
+  return count <= 3;
+}
 
-  for (size_t i = 0; i < buttons.size(); i++) {
-    int col = i % cols;
-    int row = i / cols;
-
-    int x = startX + col * (btnW + gapX);
-    int y = startY + row * (btnH + gapY);
-
-    uiDrawBMP(buttons[i].image.c_str(), x, y);
+// Screen rectangle of button i. Shared by drawing and touch detection so they can't drift apart.
+static void buttonRect(size_t i, size_t count, int& x, int& y, int& w, int& h) {
+  if (useWideLayout(count)) {
+    x = AREA_X;
+    y = WIDE_Y + i * WIDE_STEP_Y;
+    w = WIDE_W;
+    h = WIDE_H;
+  } else {
+    x = AREA_X + (i % GRID_COLS) * GRID_STEP_X;
+    y = GRID_Y + (i / GRID_COLS) * GRID_STEP_Y;
+    w = GRID_W;
+    h = GRID_H;
   }
+}
+
+static size_t visibleButtonCount(size_t count) {
+  if (useWideLayout(count)) return count;
+  return count > GRID_MAX ? GRID_MAX : count;
+}
+
+// Right-aligned black label in a small free font
+static void drawBlockLabel(const char* text, int rightX, int bottomY) {
+  tft.setFreeFont(nullptr);
+  tft.setTextFont(1);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextDatum(BR_DATUM);
+  tft.drawString(text, rightX, bottomY);
+}
+
+static void drawFrame(const String& title, size_t buttonCount) {
+  // Smooth circles are drawn first and then covered by rectangles, so only the
+  // outward-facing quarter of each anti-aliased edge stays visible.
+
+  // --- Top elbow ---
+  // Outer rounded corner
+  tft.fillSmoothCircle(OUTER_R_TOP, OUTER_R_TOP, OUTER_R_TOP, LCARS_ORANGE, APP_BACKGROUND);
+  tft.fillRect(OUTER_R_TOP, 0, SIDEBAR_W - OUTER_R_TOP, 58, LCARS_ORANGE);
+  tft.fillRect(0, OUTER_R_TOP, SIDEBAR_W, 58 - OUTER_R_TOP, LCARS_ORANGE);
+  // Inner concave corner
+  tft.fillRect(SIDEBAR_W, TOPBAR_H, INNER_R + 1, INNER_R + 1, LCARS_ORANGE);
+  tft.fillCircle(SIDEBAR_W + INNER_R + 1, TOPBAR_H + INNER_R + 1, INNER_R, APP_BACKGROUND);
+
+  // --- Title, right-aligned, with the top bar running up to it ---
+  String titleText = uiPrettyName(title);
+  if (title == "Defaults") titleText = "MAIN MENU";
+
+  tft.setFreeFont(&FreeSansBold9pt7b);
+  tft.setTextColor(LCARS_ORANGE);
+  tft.setTextDatum(TR_DATUM);
+  const int titleRight = 292;
+  int titleLeft = titleRight - tft.textWidth(titleText);
+  tft.fillRect(OUTER_R_TOP, 0, titleLeft - 6 - OUTER_R_TOP, TOPBAR_H, LCARS_ORANGE);
+  tft.drawString(titleText, titleRight, 1);
+  // Rounded end cap
+  tft.fillSmoothCircle(311, TOPBAR_H / 2, TOPBAR_H / 2, LCARS_ORANGE, APP_BACKGROUND);
+  tft.fillRect(298, 0, 13, TOPBAR_H, LCARS_ORANGE);
+
+  // --- Sidebar blocks ---
+  char count[12];
+  snprintf(count, sizeof(count), "%02u BTN", (unsigned)buttonCount);
+  drawBlockLabel("PRF", SIDEBAR_W - 5, 55);
+  uiDrawBleStatus(bleConnected);
+  tft.fillRect(0, 98, SIDEBAR_W, 50, LCARS_BLUE);
+  drawBlockLabel(count, SIDEBAR_W - 5, 144);
+  tft.fillRect(0, HOME_Y, SIDEBAR_W, HOME_H, LCARS_RED);
+  tft.setFreeFont(&FreeSansBold9pt7b);
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextDatum(BR_DATUM);
+  tft.drawString("HOME", SIDEBAR_W - 5, HOME_Y + HOME_H - 4);
+
+  // --- Bottom elbow ---
+  // Outer rounded corner
+  tft.fillSmoothCircle(OUTER_R_BOT, SH - OUTER_R_BOT - 1, OUTER_R_BOT, LCARS_PEACH, APP_BACKGROUND);
+  tft.fillRect(0, 198, SIDEBAR_W, BOTBAR_Y - 198, LCARS_PEACH);
+  tft.fillRect(OUTER_R_BOT, BOTBAR_Y, 180 - OUTER_R_BOT, SH - BOTBAR_Y, LCARS_PEACH);
+  // Inner concave corner
+  tft.fillRect(SIDEBAR_W, BOTBAR_Y - INNER_R - 1, INNER_R + 1, INNER_R + 1, LCARS_PEACH);
+  tft.fillCircle(SIDEBAR_W + INNER_R + 1, BOTBAR_Y - INNER_R - 1, INNER_R, APP_BACKGROUND);
+  drawBlockLabel("SHORTCUT KEYBOARD", 174, SH - 4);
+
+  // Bottom bar segments and end cap
+  tft.fillRect(183, BOTBAR_Y, 60, SH - BOTBAR_Y, LCARS_ORANGE);
+  tft.fillRect(246, BOTBAR_Y, 20, SH - BOTBAR_Y, LCARS_LAVENDER);
+  tft.fillSmoothCircle(311, BOTBAR_Y + 8, 8, LCARS_BLUE, APP_BACKGROUND);
+  tft.fillRect(269, BOTBAR_Y, 42, SH - BOTBAR_Y, LCARS_BLUE);
+}
+
+static void drawButton(const Btn& btn, size_t i, size_t count) {
+  int x, y, w, h;
+  buttonRect(i, count, x, y, w, h);
+
+  uint16_t color = btn.color != 0 ? btn.color : BUTTON_PALETTE[i % PALETTE_SIZE];
+  tft.fillSmoothRoundRect(x, y, w, h, h / 2, color, APP_BACKGROUND);
+
+  // LCARS labels are right-aligned; drop to a smaller (non-bold) font if the label doesn't fit
+  const int padRight = 12;
+  const int padLeft  = 8;
+  String label = uiPrettyName(btn.label);
+  int maxTextW = w - padRight - padLeft;
+  tft.setFreeFont(useWideLayout(count) ? &FreeSansBold12pt7b : &FreeSansBold9pt7b);
+  if (tft.textWidth(label) > maxTextW) {
+    Serial.printf("Label \"%s\" is %dpx, only %dpx fits in bold - shorten it in config.json\n",
+                  label.c_str(), tft.textWidth(label), maxTextW);
+    tft.setFreeFont(nullptr);
+    tft.setTextFont(2);
+  }
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextDatum(MR_DATUM);
+  tft.drawString(label, x + w - padRight, y + h / 2);
+}
+
+void uiDrawScreen(const String& title, const std::vector<Btn>& buttons) {
+  tft.fillScreen(APP_BACKGROUND);
+  drawFrame(title, buttons.size());
+
+  size_t count = visibleButtonCount(buttons.size());
+  if (count < buttons.size()) {
+    Serial.printf("Profile %s has %u buttons, only %u fit on screen\n",
+                  title.c_str(), (unsigned)buttons.size(), (unsigned)count);
+  }
+  for (size_t i = 0; i < count; i++) {
+    drawButton(buttons[i], i, buttons.size());
+  }
+
+  tft.setTextDatum(TL_DATUM);
+  tft.setFreeFont(nullptr);
+}
+
+bool uiIsHomePressed(int touchX, int touchY) {
+  // The HOME block plus the bottom elbow beneath it, to be forgiving of touch calibration
+  return touchX <= SIDEBAR_W + 6 && touchY >= HOME_Y;
 }
 
 int uiGetPressedButtonIndex(int touchX, int touchY) {
-  const int btnW = 96;
-  const int btnH = 96;
-  
-  // These MUST exactly match the layout numbers used in your drawing loop
-  const int startX = 8;   // Left margin
-  const int startY = 3;  // Top margin
-  const int gapX = 8;     // Space between columns
-  const int gapY = 16;    // Space between rows
-  const int cols = 3;     // 3 buttons per row
-
-  // Loop through whatever number of buttons are currently in the array
-  for (size_t i = 0; i < buttons.size(); i++) {
-    int col = i % cols;
-    int row = i / cols;
-
-    // Calculate the top-left corner of this specific button
-    int x1 = startX + col * (btnW + gapX);
-    int y1 = startY + row * (btnH + gapY);
-
-    // Calculate the bottom-right corner of this specific button
-    int x2 = x1 + btnW;
-    int y2 = y1 + btnH;
-
-    // Check if the touch coordinates fall entirely inside this bounding box
-    if (touchX >= x1 && touchX <= x2 && touchY >= y1 && touchY <= y2) {
-      return i; 
+  size_t count = visibleButtonCount(buttons.size());
+  for (size_t i = 0; i < count; i++) {
+    int x, y, w, h;
+    buttonRect(i, buttons.size(), x, y, w, h);
+    if (touchX >= x && touchX <= x + w && touchY >= y && touchY <= y + h) {
+      return i;
     }
   }
 

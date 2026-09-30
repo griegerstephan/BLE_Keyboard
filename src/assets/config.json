@@ -1,38 +1,37 @@
 {
   "Defaults": [
-    { "label": "VS", "image": "/VSC_Icon.bmp", "target": "VisualStudio" },
-    { "label": "Arduino", "image": "/Arduino_Icon.bmp", "target": "Arduino" },
-    { "label": "YouTube", "image": "/youtube.bmp", "target": "YouTube" }
+    { "label": "VisualStudio", "target": "VisualStudio" },
+    { "label": "Arduino", "target": "Arduino" },
+    { "label": "YouTube", "target": "YouTube", "color": "#CC6666" }
   ],
   "VisualStudio": [
-    { "label": "Copy", "image": "/copy.bmp", "steps": ["ctrl+a", "ctrl+c"] },
-    { "label": "SaveAll", "image": "/save.bmp", "steps": ["ctrl+k", "s"] },
-    { "label": "AI", "image": "/vsai.bmp", "steps": ["ctrl+alt+i"] },
-    { "label": "Build", "image": "/vsbuild.bmp", "steps": ["ctrl+alt+b"] },
-    { "label": "BuildUpload", "image": "/vsbuildupload.bmp", "steps": ["ctrl+alt+u"] },
-    { "label": "Serial", "image": "/vsserial.bmp", "steps": ["ctrl+alt+s" ] }
+    { "label": "Copy", "steps": ["ctrl+a", "ctrl+c"] },
+    { "label": "SaveAll", "steps": ["ctrl+k", "s"] },
+    { "label": "AI", "steps": ["ctrl+alt+i"] },
+    { "label": "Build", "steps": ["ctrl+alt+b"] },
+    { "label": "Upload", "steps": ["ctrl+alt+u"] },
+    { "label": "Serial", "steps": ["ctrl+alt+s" ] }
   ],
   "Arduino": [
-    { "label": "Copy", "image": "/arduinocopy.bmp", "steps": ["ctrl+a", "ctrl+c"] },
-    { "label": "SaveAll", "image": "/arduinosave.bmp", "steps": ["ctrl+s"] },
-    { "label": "Build", "image": "/arduinobuild.bmp", "steps": ["ctrl+r"] },
-    { "label": "BuildUpload", "image": "/arduinoupload.bmp", "steps": ["ctrl+u"] },
-    { "label": "Serial", "image": "/arduinoserial.bmp", "steps": ["ctrl+shift+m"] }
+    { "label": "Copy", "steps": ["ctrl+a", "ctrl+c"] },
+    { "label": "SaveAll", "steps": ["ctrl+s"] },
+    { "label": "Build", "steps": ["ctrl+r"] },
+    { "label": "Upload", "steps": ["ctrl+u"] },
+    { "label": "Serial", "steps": ["ctrl+shift+m"] }
   ],
   "YouTube": [
-    { "label": "SkipAd", "image": "/skipad.bmp", "steps": ["right", "right","right","right","right","right"] },
-    { "label": "CloseTab", "image": "/closetab.bmp", "steps": ["ctrl+f4"] },
-    { "label": "YouTube", "image": "/youtube.bmp", "steps": ["ctrl+t","y","o","u","t","u","b","e",".","c","o","m", "enter"] }
+    { "label": "SkipAd", "steps": ["right", "right","right","right","right","right"] },
+    { "label": "CloseTab", "steps": ["ctrl+f4"] },
+    { "label": "YouTube", "steps": ["ctrl+t","y","o","u","t","u","b","e",".","c","o","m", "enter"] }
   ],
   "powerpnt.exe": [
-    { "label": "NewSlide", "image": "/powerpntNewSlide.bmp", "steps": ["ctrl+m"] },
-    { "label": "EditMaster", "image": "/powerpntMaster.bmp", "steps": ["alt+w","m"] }
+    { "label": "NewSlide", "steps": ["ctrl+m"] },
+    { "label": "EditMaster", "steps": ["alt+w","m"] }
   ],
   "claude.exe": [
-    { "label": "chat", "image": "/claudechat.bmp", "steps": ["ctrl+1"] },
-    { "label": "NewChat", "image": "/claudenewchat.bmp", "steps": ["ctrl+n"] },
-    { "label": "code", "image": "/claudecode.bmp", "steps": ["ctrl+2"] },
-    { "label": "settings", "image": "/claudesettings.bmp", "steps": ["ctrl+,"] }
-
+    { "label": "chat", "steps": ["ctrl+1"] },
+    { "label": "New", "steps": ["ctrl+n"] },
+    { "label": "code", "steps": ["ctrl+2"] },
+    { "label": "settings", "steps": ["ctrl+,"] }
   ]
 }

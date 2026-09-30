@@ -12,10 +12,19 @@
 
 extern TFT_eSPI tft;
 static bool firstBootCompleted = false;
+static String currentProfile = "Defaults";
 std::vector<Btn> buttons;
 
-void loadProfile(const String& profileName) { 
+// Parses "#RRGGBB" into RGB565; returns 0 (use the palette) if missing or invalid
+static uint16_t parseColor(const String& hex) {
+    if (hex.length() != 7 || hex[0] != '#') return 0;
+    uint32_t rgb = strtoul(hex.c_str() + 1, nullptr, 16);
+    return rgb565((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+}
+
+void loadProfile(const String& profileName) {
     buttons.clear();
+    currentProfile = profileName;
 
     File configFile = SD.open("/config.json", FILE_READ); 
     if (!configFile) {
@@ -33,10 +42,17 @@ void loadProfile(const String& profileName) {
 
     JsonArray profileButtons = doc[profileName];
 
+    // Apps without a profile in config.json fall back to the main menu instead of a blank screen
+    if (profileButtons.isNull() && profileName != "Defaults") {
+      Serial.println("No profile for " + profileName + ", showing Defaults");
+      currentProfile = "Defaults";
+      profileButtons = doc["Defaults"];
+    }
+
     for (JsonObject btn : profileButtons) {
         Btn newButton;
         newButton.label = btn["label"].as<String>(); 
-        newButton.image = btn["image"].as<String>();
+        newButton.color = parseColor(btn["color"] | "");
         newButton.target = btn["target"].as<String>(); 
 
         JsonArray shortcutsArr = btn["steps"];
@@ -54,18 +70,13 @@ void desktopDraw() {
     firstBootCompleted = true; 
   }
 
-  tft.fillScreen(APP_BACKGROUND); 
-  uiDrawButtons(buttons);
-
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_DARKGREY);
-  tft.drawString("--- TAP HERE FOR MAIN MENU ---", SW / 2, 228, 1);
+  uiDrawScreen(currentProfile, buttons);
 }
 
 void desktopHandleTouch(int x, int y) {
-  // --- INVISIBLE GLOBAL BOTTOM HOME BUTTON ---
-  Serial.printf("Touch at X:%d Y:%d\n", x, y); 
-  if (y >= 200) {
+  // --- LCARS HOME BUTTON (bottom of the sidebar) ---
+  Serial.printf("Touch at X:%d Y:%d\n", x, y);
+  if (uiIsHomePressed(x, y)) {
     loadProfile("Defaults");
     desktopDraw(); 
     return; 
@@ -104,8 +115,7 @@ void checkForIncomingWindowsProfile() {
       if (targetProfile != "") {
         
         loadProfile(targetProfile);
-        tft.fillScreen(APP_BACKGROUND); 
-        desktopDraw(); 
+        desktopDraw();
       }
     }
   }
