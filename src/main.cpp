@@ -23,7 +23,7 @@ BleKeyboard* kb = nullptr;
 SPIClass sdSPI(VSPI);  // SD card lives on its own VSPI bus
 bool sdReady = false;  // did the SD card mount?
 
-String bleName  = "Shortcut Keyboard";
+String bleName  = "Shortcut Keyboard"; 
 String bleManuf = "Griegs";
  
 void setup(){
