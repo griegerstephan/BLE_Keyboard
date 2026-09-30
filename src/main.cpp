@@ -25,7 +25,7 @@ bool sdReady = false;  // did the SD card mount?
 
 String bleName  = "Shortcut Keyboard"; 
 String bleManuf = "Griegs";
- 
+  
 void setup(){
   Serial.begin(115200);
   delay(300);
