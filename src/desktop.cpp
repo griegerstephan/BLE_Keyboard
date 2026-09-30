@@ -8,8 +8,6 @@
 #include "ui.h"
 #include "bluetooth.h"
 
-#define SD_CS_PIN 5 
-
 extern TFT_eSPI tft;
 static bool firstBootCompleted = false;
 static String currentProfile = "Defaults";

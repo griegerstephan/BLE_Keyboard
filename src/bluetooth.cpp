@@ -1,5 +1,4 @@
 #include <BleKeyboard.h>
-#include <ArduinoJson.h>
 #include <vector>
 #include "config.h"
 

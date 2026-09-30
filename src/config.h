@@ -44,7 +44,7 @@ struct Btn {
   String label;
   uint16_t color = 0;        // RGB565 button colour; 0 = pick from the LCARS palette
   std::vector<String> steps; // each entry is one chord, e.g. "ctrl+a"
-  String target; // NEW: Holds the profile name to load next (e.g., "VisualStudio")
+  String target;             // profile to open instead of sending keys (e.g. "VisualStudio")
 };
 
 // EXTERN tells other files this vector exists globally, without creating it yet
