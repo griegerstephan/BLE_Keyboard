@@ -151,11 +151,9 @@ static uint16_t sidebarColor(SidebarAction action) {
   }
 }
 
-// Briefly lights a sidebar button white so a tap that doesn't change the screen still gives feedback
-void uiFlashSidebar(SidebarAction action) {
-  drawSidebarBlock(action, TFT_WHITE);
-  delay(120);
-  drawSidebarBlock(action, sidebarColor(action));
+// Lights a sidebar button white while it is held, and restores its colour on release
+void uiDrawSidebarState(SidebarAction action, bool pressed) {
+  drawSidebarBlock(action, pressed ? TFT_WHITE : sidebarColor(action));
   tft.setTextDatum(TL_DATUM);
 }
 
@@ -239,11 +237,12 @@ static void drawFrame(const String& title) {
   tft.fillRect(269, BOTBAR_Y, 42, SH - BOTBAR_Y, LCARS_BLUE);
 }
 
-static void drawButton(const Btn& btn, size_t i, size_t count) {
+static void drawButton(const Btn& btn, size_t i, size_t count, bool pressed = false) {
   int x, y, w, h;
   buttonRect(i, count, x, y, w, h);
 
   uint16_t color = btn.color != 0 ? btn.color : BUTTON_PALETTE[i % PALETTE_SIZE];
+  if (pressed) color = TFT_WHITE;
   tft.fillSmoothRoundRect(x, y, w, h, h / 2, color, APP_BACKGROUND);
 
   // LCARS labels are right-aligned; drop to a smaller (non-bold) font if the label doesn't fit
@@ -276,6 +275,14 @@ void uiDrawScreen(const String& title, const std::vector<Btn>& buttons) {
     drawButton(buttons[i], i, buttons.size());
   }
 
+  tft.setTextDatum(TL_DATUM);
+  tft.setFreeFont(nullptr);
+}
+
+// Redraws one profile button white while held, or in its normal colour on release
+void uiDrawButtonState(size_t index, bool pressed) {
+  if (index >= visibleButtonCount(buttons.size())) return;
+  drawButton(buttons[index], index, buttons.size(), pressed);
   tft.setTextDatum(TL_DATUM);
   tft.setFreeFont(nullptr);
 }

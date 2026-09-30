@@ -109,6 +109,7 @@ void loop() {
   else {
     // Finger has completely left the screen, unlock the system for the next tap
     if (wasPressedLastFrame) {
+      desktopHandleRelease(); // Un-highlight the button that was being held
       delay(50); // Small hardware debounce delay to let the electrical signals settle
       wasPressedLastFrame = false;
     }

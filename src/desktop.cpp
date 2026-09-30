@@ -13,6 +13,10 @@ static bool firstBootCompleted = false;
 static String currentProfile = "Defaults";
 std::vector<Btn> buttons;
 
+// What is currently lit white under the finger, restored on release
+static int heldButton = -1;
+static SidebarAction heldSidebar = SIDEBAR_NONE;
+
 // Parses "#RRGGBB" into RGB565; returns 0 (use the palette) if missing or invalid
 static uint16_t parseColor(const String& hex) {
     if (hex.length() != 7 || hex[0] != '#') return 0;
@@ -65,14 +69,28 @@ void loadProfile(const String& profileName) {
 void desktopDraw() {
   if (!firstBootCompleted && buttons.size() == 0) {
     loadProfile("Defaults");
-    firstBootCompleted = true; 
+    firstBootCompleted = true;
   }
 
+  // A full redraw clears any highlight, so there's nothing to restore on release
+  heldButton = -1;
+  heldSidebar = SIDEBAR_NONE;
   uiDrawScreen(currentProfile, buttons);
 }
 
+// Called when the finger leaves the screen: return the held button to its normal colour
+void desktopHandleRelease() {
+  if (heldButton != -1) {
+    uiDrawButtonState(heldButton, false);
+    heldButton = -1;
+  }
+  if (heldSidebar != SIDEBAR_NONE) {
+    uiDrawSidebarState(heldSidebar, false);
+    heldSidebar = SIDEBAR_NONE;
+  }
+}
+
 void desktopHandleTouch(int x, int y) {
-  // --- LCARS HOME BUTTON (bottom of the sidebar) ---
   Serial.printf("Touch at X:%d Y:%d\n", x, y);
 
   // --- LCARS SIDEBAR: fixed buttons available on every screen ---
@@ -82,11 +100,13 @@ void desktopHandleTouch(int x, int y) {
       desktopDraw();
       return;
     case SIDEBAR_SNIP:   // Windows screenshot snip
-      uiFlashSidebar(SIDEBAR_SNIP);
+      uiDrawSidebarState(SIDEBAR_SNIP, true);
+      heldSidebar = SIDEBAR_SNIP;
       bleRunAction({"win+shift+s"});
       return;
     case SIDEBAR_DESK:   // Windows show desktop
-      uiFlashSidebar(SIDEBAR_DESK);
+      uiDrawSidebarState(SIDEBAR_DESK, true);
+      heldSidebar = SIDEBAR_DESK;
       bleRunAction({"win+d"});
       return;
     case SIDEBAR_HOME:   // back to the main menu
@@ -111,6 +131,9 @@ void desktopHandleTouch(int x, int y) {
       desktopDraw();
       
     } else {
+      // Light the button before sending, so it stays white until the last key has gone
+      uiDrawButtonState(pressedIndex, true);
+      heldButton = pressedIndex;
       bleRunAction(clickedButton.steps);
     }
   } 
