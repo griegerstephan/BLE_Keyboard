@@ -77,17 +77,26 @@ void desktopHandleTouch(int x, int y) {
   // --- LCARS HOME BUTTON (bottom of the sidebar) ---
   Serial.printf("Touch at X:%d Y:%d\n", x, y);
 
-  // --- LCARS FLIP BUTTON (turns the screen upside down) ---
-  if (uiIsFlipPressed(x, y)) {
-    uiToggleRotation();
-    desktopDraw();
-    return;
-  }
-
-  if (uiIsHomePressed(x, y)) {
-    loadProfile("Defaults");
-    desktopDraw(); 
-    return; 
+  // --- LCARS SIDEBAR: fixed buttons available on every screen ---
+  switch (uiGetSidebarAction(x, y)) {
+    case SIDEBAR_FLIP:   // turn the screen upside down
+      uiToggleRotation();
+      desktopDraw();
+      return;
+    case SIDEBAR_SNIP:   // Windows screenshot snip
+      uiFlashSidebar(SIDEBAR_SNIP);
+      bleRunAction({"win+shift+s"});
+      return;
+    case SIDEBAR_DESK:   // Windows show desktop
+      uiFlashSidebar(SIDEBAR_DESK);
+      bleRunAction({"win+d"});
+      return;
+    case SIDEBAR_HOME:   // back to the main menu
+      loadProfile("Defaults");
+      desktopDraw();
+      return;
+    default:
+      break;
   }
 
   int pressedIndex = uiGetPressedButtonIndex(x, y);

@@ -18,11 +18,14 @@ const int OUTER_R_TOP  = 24;   // outer radius of the top elbow
 const int OUTER_R_BOT  = 16;   // outer radius of the bottom elbow
 const int INNER_R      = 13;   // inner (concave) radius of both elbows
 
-// Sidebar blocks
-const int FLIP_Y = 98;
-const int FLIP_H = 50;
-const int HOME_Y = 151;
-const int HOME_H = 44;
+// Sidebar blocks (FLIP lives in the top elbow, y 0-57)
+const int ELBOW_H = 58;
+const int SNIP_Y  = 61;
+const int SNIP_H  = 34;
+const int DESK_Y  = 98;
+const int DESK_H  = 50;
+const int HOME_Y  = 151;
+const int HOME_H  = 44;
 
 // --- Button area geometry ---
 // <= 3 buttons: one column of wide pills. Otherwise: two columns of smaller pills.
@@ -93,16 +96,85 @@ String uiPrettyName(const String& name) {
 
 static bool bleConnected = false;
 
-// Lavender sidebar block showing whether the PC is connected over Bluetooth
-void uiDrawBleStatus(bool connected) {
-  bleConnected = connected;
-  tft.fillRect(0, 61, SIDEBAR_W, 34, connected ? LCARS_LAVENDER : LCARS_RED);
+// Right-aligned black label in a small font
+static void drawBlockLabel(const char* text, int rightX, int bottomY) {
   tft.setFreeFont(nullptr);
   tft.setTextFont(1);
   tft.setTextSize(1);
   tft.setTextColor(TFT_BLACK);
   tft.setTextDatum(BR_DATUM);
-  tft.drawString(connected ? "BLE LINK" : "NO LINK", SIDEBAR_W - 5, 92);
+  tft.drawString(text, rightX, bottomY);
+}
+
+// Right-aligned black label in the bold button font
+static void drawBoldLabel(const char* text, int rightX, int bottomY) {
+  tft.setFreeFont(&FreeSansBold9pt7b);
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextDatum(BR_DATUM);
+  tft.drawString(text, rightX, bottomY);
+}
+
+// Draws one sidebar button in the given colour (used for normal drawing and the tap flash)
+static void drawSidebarBlock(SidebarAction action, uint16_t color) {
+  switch (action) {
+    case SIDEBAR_FLIP:
+      // Top elbow: smooth outer corner first, then rectangles cover all but its outer quarter
+      tft.fillSmoothCircle(OUTER_R_TOP, OUTER_R_TOP, OUTER_R_TOP, color, APP_BACKGROUND);
+      tft.fillRect(OUTER_R_TOP, 0, SIDEBAR_W - OUTER_R_TOP, ELBOW_H, color);
+      tft.fillRect(0, OUTER_R_TOP, SIDEBAR_W, ELBOW_H - OUTER_R_TOP, color);
+      drawBoldLabel("FLIP", SIDEBAR_W - 5, ELBOW_H - 4);
+      break;
+    case SIDEBAR_SNIP:
+      tft.fillRect(0, SNIP_Y, SIDEBAR_W, SNIP_H, color);
+      drawBoldLabel("SNIP", SIDEBAR_W - 5, SNIP_Y + SNIP_H - 4);
+      break;
+    case SIDEBAR_DESK:
+      tft.fillRect(0, DESK_Y, SIDEBAR_W, DESK_H, color);
+      drawBoldLabel("DESK", SIDEBAR_W - 5, DESK_Y + DESK_H - 4);
+      break;
+    case SIDEBAR_HOME:
+      tft.fillRect(0, HOME_Y, SIDEBAR_W, HOME_H, color);
+      drawBoldLabel("HOME", SIDEBAR_W - 5, HOME_Y + HOME_H - 4);
+      break;
+    default:
+      break;
+  }
+}
+
+static uint16_t sidebarColor(SidebarAction action) {
+  switch (action) {
+    case SIDEBAR_FLIP: return LCARS_ORANGE;
+    case SIDEBAR_SNIP: return LCARS_LAVENDER;
+    case SIDEBAR_DESK: return LCARS_BLUE;
+    case SIDEBAR_HOME: return LCARS_RED;
+    default:           return APP_BACKGROUND;
+  }
+}
+
+// Briefly lights a sidebar button white so a tap that doesn't change the screen still gives feedback
+void uiFlashSidebar(SidebarAction action) {
+  drawSidebarBlock(action, TFT_WHITE);
+  delay(120);
+  drawSidebarBlock(action, sidebarColor(action));
+  tft.setTextDatum(TL_DATUM);
+}
+
+// Bottom elbow: peach with "BLE LINK" when connected, red with "NO LINK" when not
+void uiDrawBleStatus(bool connected) {
+  bleConnected = connected;
+  uint16_t color = connected ? LCARS_PEACH : LCARS_RED;
+
+  // Outer rounded corner
+  tft.fillSmoothCircle(OUTER_R_BOT, SH - OUTER_R_BOT - 1, OUTER_R_BOT, color, APP_BACKGROUND);
+  tft.fillRect(0, 198, SIDEBAR_W, BOTBAR_Y - 198, color);
+  tft.fillRect(OUTER_R_BOT, BOTBAR_Y, 180 - OUTER_R_BOT, SH - BOTBAR_Y, color);
+  // Inner concave corner
+  tft.fillRect(SIDEBAR_W, BOTBAR_Y - INNER_R - 1, INNER_R + 1, INNER_R + 1, color);
+  tft.fillCircle(SIDEBAR_W + INNER_R + 1, BOTBAR_Y - INNER_R - 1, INNER_R, APP_BACKGROUND);
+  drawBlockLabel(connected ? "BLE LINK" : "NO LINK", 174, SH - 4);
+
+  // First bar segment follows the link state too
+  tft.fillRect(183, BOTBAR_Y, 60, SH - BOTBAR_Y, connected ? LCARS_ORANGE : LCARS_RED);
   tft.setTextDatum(TL_DATUM);
 }
 
@@ -130,25 +202,12 @@ static size_t visibleButtonCount(size_t count) {
   return count > GRID_MAX ? GRID_MAX : count;
 }
 
-// Right-aligned black label in a small free font
-static void drawBlockLabel(const char* text, int rightX, int bottomY) {
-  tft.setFreeFont(nullptr);
-  tft.setTextFont(1);
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_BLACK);
-  tft.setTextDatum(BR_DATUM);
-  tft.drawString(text, rightX, bottomY);
-}
-
 static void drawFrame(const String& title) {
   // Smooth circles are drawn first and then covered by rectangles, so only the
   // outward-facing quarter of each anti-aliased edge stays visible.
 
-  // --- Top elbow ---
-  // Outer rounded corner
-  tft.fillSmoothCircle(OUTER_R_TOP, OUTER_R_TOP, OUTER_R_TOP, LCARS_ORANGE, APP_BACKGROUND);
-  tft.fillRect(OUTER_R_TOP, 0, SIDEBAR_W - OUTER_R_TOP, 58, LCARS_ORANGE);
-  tft.fillRect(0, OUTER_R_TOP, SIDEBAR_W, 58 - OUTER_R_TOP, LCARS_ORANGE);
+  // --- Top elbow (doubles as the FLIP button) ---
+  drawSidebarBlock(SIDEBAR_FLIP, LCARS_ORANGE);
   // Inner concave corner
   tft.fillRect(SIDEBAR_W, TOPBAR_H, INNER_R + 1, INNER_R + 1, LCARS_ORANGE);
   tft.fillCircle(SIDEBAR_W + INNER_R + 1, TOPBAR_H + INNER_R + 1, INNER_R, APP_BACKGROUND);
@@ -168,29 +227,13 @@ static void drawFrame(const String& title) {
   tft.fillSmoothCircle(311, TOPBAR_H / 2, TOPBAR_H / 2, LCARS_ORANGE, APP_BACKGROUND);
   tft.fillRect(298, 0, 13, TOPBAR_H, LCARS_ORANGE);
 
-  // --- Sidebar blocks ---
-  drawBlockLabel("PRF", SIDEBAR_W - 5, 55);
+  // --- Sidebar buttons ---
+  drawSidebarBlock(SIDEBAR_SNIP, LCARS_LAVENDER);
+  drawSidebarBlock(SIDEBAR_DESK, LCARS_BLUE);
+  drawSidebarBlock(SIDEBAR_HOME, LCARS_RED);
+
+  // --- Bottom elbow with Bluetooth status, then the remaining bar segments and end cap ---
   uiDrawBleStatus(bleConnected);
-  tft.fillRect(0, FLIP_Y, SIDEBAR_W, FLIP_H, LCARS_BLUE);
-  tft.fillRect(0, HOME_Y, SIDEBAR_W, HOME_H, LCARS_RED);
-  tft.setFreeFont(&FreeSansBold9pt7b);
-  tft.setTextColor(TFT_BLACK);
-  tft.setTextDatum(BR_DATUM);
-  tft.drawString("FLIP", SIDEBAR_W - 5, FLIP_Y + FLIP_H - 4);
-  tft.drawString("HOME", SIDEBAR_W - 5, HOME_Y + HOME_H - 4);
-
-  // --- Bottom elbow ---
-  // Outer rounded corner
-  tft.fillSmoothCircle(OUTER_R_BOT, SH - OUTER_R_BOT - 1, OUTER_R_BOT, LCARS_PEACH, APP_BACKGROUND);
-  tft.fillRect(0, 198, SIDEBAR_W, BOTBAR_Y - 198, LCARS_PEACH);
-  tft.fillRect(OUTER_R_BOT, BOTBAR_Y, 180 - OUTER_R_BOT, SH - BOTBAR_Y, LCARS_PEACH);
-  // Inner concave corner
-  tft.fillRect(SIDEBAR_W, BOTBAR_Y - INNER_R - 1, INNER_R + 1, INNER_R + 1, LCARS_PEACH);
-  tft.fillCircle(SIDEBAR_W + INNER_R + 1, BOTBAR_Y - INNER_R - 1, INNER_R, APP_BACKGROUND);
-  drawBlockLabel("SHORTCUT KEYBOARD", 174, SH - 4);
-
-  // Bottom bar segments and end cap
-  tft.fillRect(183, BOTBAR_Y, 60, SH - BOTBAR_Y, LCARS_ORANGE);
   tft.fillRect(246, BOTBAR_Y, 20, SH - BOTBAR_Y, LCARS_LAVENDER);
   tft.fillSmoothCircle(311, BOTBAR_Y + 8, 8, LCARS_BLUE, APP_BACKGROUND);
   tft.fillRect(269, BOTBAR_Y, 42, SH - BOTBAR_Y, LCARS_BLUE);
@@ -237,13 +280,14 @@ void uiDrawScreen(const String& title, const std::vector<Btn>& buttons) {
   tft.setFreeFont(nullptr);
 }
 
-bool uiIsFlipPressed(int touchX, int touchY) {
-  return touchX <= SIDEBAR_W + 6 && touchY >= FLIP_Y && touchY < HOME_Y;
-}
-
-bool uiIsHomePressed(int touchX, int touchY) {
-  // The HOME block plus the bottom elbow beneath it, to be forgiving of touch calibration
-  return touchX <= SIDEBAR_W + 6 && touchY >= HOME_Y;
+SidebarAction uiGetSidebarAction(int touchX, int touchY) {
+  if (touchX > SIDEBAR_W + 6) return SIDEBAR_NONE;
+  // Boundaries sit in the gaps between blocks. HOME also takes the bottom elbow beneath
+  // it, to be forgiving of touch calibration.
+  if (touchY < SNIP_Y - 1) return SIDEBAR_FLIP;
+  if (touchY < DESK_Y - 1) return SIDEBAR_SNIP;
+  if (touchY < HOME_Y - 1) return SIDEBAR_DESK;
+  return SIDEBAR_HOME;
 }
 
 int uiGetPressedButtonIndex(int touchX, int touchY) {
